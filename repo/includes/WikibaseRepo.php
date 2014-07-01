@@ -2,6 +2,7 @@
 
 namespace Wikibase\Repo;
 
+use ApiBase;
 use DataTypes\DataTypeFactory;
 use DataValues\DataValueFactory;
 use DataValues\Deserializers\DataValueDeserializer;
@@ -12,8 +13,12 @@ use Serializers\Serializer;
 use SiteSQLStore;
 use SiteStore;
 use StubObject;
+use User;
 use ValueFormatters\FormatterOptions;
 use ValueFormatters\ValueFormatter;
+use Wikibase\Api\ApiErrorReporter;
+use Wikibase\Api\ApiRedirectCreator;
+use Wikibase\Api\RedirectCreator;
 use Wikibase\ItemHandler;
 use Wikibase\PropertyHandler;
 use Wikibase\Repo\Notifications\ChangeNotifier;
@@ -888,6 +893,30 @@ class WikibaseRepo {
 		}
 
 		return array( 'Wikibase\Lib\Serializers\LegacyInternalEntitySerializer', 'isBlobUsingLegacyFormat' );
+	}
+
+	public function newApiRedirectCreator( ApiBase $api ) {
+		$errorReporter = new ApiErrorReporter(
+			$api,
+			$this->getExceptionLocalizer(),
+			$api->getLanguage()
+		);
+
+		return new ApiRedirectCreator(
+			$this->newRedirectCreator( $api->getUser() ),
+			$this->getEntityIdParser(),
+			$errorReporter,
+			$api->getModuleName()
+		);
+	}
+
+	private function newRedirectCreator( User $user ) {
+		return new RedirectCreator(
+			$this->getEntityRevisionLookup( 'uncached' ),
+			$this->getEntityStore(),
+			$this->getSummaryFormatter(),
+			$user
+		);
 	}
 
 }
